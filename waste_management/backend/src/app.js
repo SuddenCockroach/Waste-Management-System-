@@ -89,3 +89,18 @@ app.patch('/api/collections/:id', authMiddleware('driver'), async (req, res) => 
 // ── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+// ── Admin Stats ──────────────────────────────────────────────────────────────
+app.get('/api/admin/stats', authMiddleware('admin'), async (req, res) => {
+  try {
+    const [[{ total_users }]] = await pool.query('SELECT COUNT(*) as total_users FROM users');
+    const [[{ total_drivers }]] = await pool.query("SELECT COUNT(*) as total_drivers FROM users WHERE role = 'driver'");
+    const [[{ total_residents }]] = await pool.query("SELECT COUNT(*) as total_residents FROM users WHERE role = 'user'");
+    const [collections] = await pool.query('SELECT status, COUNT(*) as count FROM collection_status GROUP BY status');
+    const [recent] = await pool.query('SELECT * FROM collection_status ORDER BY timestamp DESC LIMIT 5');
+    res.json({ total_users, total_drivers, total_residents, collections, recent });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
